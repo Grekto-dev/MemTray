@@ -649,6 +649,8 @@ class MemTrayApplet extends Applet.Applet {
         this._canvas = new MemTrayCanvas(panel_height);
         this.actor.add_actor(this._canvas.actor);
 
+        this.set_applet_tooltip("MemTray");
+
         // 2. Main MemInfo Popup Menu (opens on right-click OR single left-click)
         this.menuManager = new PopupMenu.PopupMenuManager(this);
         this.menu = new Applet.AppletPopupMenu(this, orientation);
@@ -1082,7 +1084,7 @@ class MemTrayApplet extends Applet.Applet {
             activeBarColor: activeBarColor
         });
 
-        // Update Tooltip if enabled
+        // Update Tooltip
         if (this.show_tooltip) {
             let physPair = Memory.formatDashboardPair(memStats.ramUsed, memStats.ramTotal);
             let pagePair = Memory.formatDashboardPair(memStats.pageUsed, memStats.pageTotal);
@@ -1092,7 +1094,7 @@ class MemTrayApplet extends Applet.Applet {
                 `Page File: ${pagePair}`;
             this.set_applet_tooltip(tooltipText);
         } else {
-            this.set_applet_tooltip("");
+            this.set_applet_tooltip("MemTray");
         }
 
         // Update dashboard numbers in-place if menu is open (never destroy hovered actors!)
