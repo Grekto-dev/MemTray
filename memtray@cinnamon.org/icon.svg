@@ -1,6 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48">
-  <rect x="2" y="6" width="44" height="36" rx="6" fill="#1e1e1e" stroke="#454545" stroke-width="2"/>
-  <rect x="6" y="10" width="8" height="28" rx="1.5" fill="#2d2d2d" stroke="#555555" stroke-width="1"/>
-  <rect x="6" y="18" width="8" height="20" rx="1.5" fill="#4caf50"/>
-  <text x="29" y="29" font-family="sans-serif" font-weight="bold" font-size="13" fill="#ffffff" text-anchor="middle">23,7</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 16 16" shape-rendering="crispEdges">
+  <!-- Horizontal Bar at Top (y=0..3) -->
+  <rect x="0" y="0" width="11" height="4" fill="#ffffb8"/>
+  <rect x="11" y="0" width="5" height="4" fill="#787878"/>
+  <!-- 4x9 Bitmap Digits "23.7" at y=7..15 -->
+  <!-- Digit '2' at x=0..3 -->
+  <path fill="#ffffff" d="M0 7h3v1H0zM3 8h1v3H3zM1 11h2v1H1zM0 12h1v3H0zM1 15h3v1H1z"/>
+  <!-- Digit '3' at x=5..8 -->
+  <path fill="#ffffff" d="M5 7h3v1H5zM8 8h1v3H8zM6 11h2v1H6zM8 12h1v3H8zM5 15h3v1H5z"/>
+  <!-- Dot '.' at x=10, y=15 -->
+  <rect x="10" y="15" width="1" height="1" fill="#ffffff"/>
+  <!-- Digit '7' at x=12..15 -->
+  <path fill="#ffffff" d="M12 7h4v1h-4zM15 8h1v2h-1zM14 10h1v3h-1zM13 13h1v3h-1z"/>
 </svg>

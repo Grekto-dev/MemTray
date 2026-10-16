@@ -63,7 +63,12 @@ print("\n[2] Testing Tray Value Formatting...");
 assertEqual(
     Memory.formatTrayValue(stats, { showPageFile: false, showFreeMemory: false, showPercentage: false }),
     "23,5",
-    "Tray value displays compact 1-decimal GB with comma ('23,5')"
+    "Tray value (>= 10 GB) displays compact 1-decimal GB ('23,5')"
+);
+assertEqual(
+    Memory.formatTrayValue({ ramUsed: Math.round(2.05 * Memory.BYTES_PER_GB), ramFree: 0, ramPercent: 55 }, { showPageFile: false, showFreeMemory: false, showPercentage: false }),
+    "2,05",
+    "Tray value (< 10 GB) displays compact 2-decimal GB ('2,05' matching MemInfoTray.png)"
 );
 assertEqual(
     Memory.formatTrayValue(stats, { showPageFile: false, showFreeMemory: false, showPercentage: true, showPercentSign: false }),

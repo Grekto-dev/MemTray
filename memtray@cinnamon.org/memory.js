@@ -83,8 +83,11 @@ function formatTrayValue(memStats, options = {}) {
     if (gb >= 100) {
         return `${Math.round(gb)}`;
     }
-    if (gb >= 0.1 || targetBytes === 0) {
+    if (gb >= 10) {
         return gb.toFixed(1).replace('.', ',');
+    }
+    if (gb >= 0.01 || targetBytes === 0) {
+        return gb.toFixed(2).replace('.', ',');
     }
     return `${Math.max(1, Math.round(targetBytes / BYTES_PER_MB))}`;
 }
@@ -599,9 +602,9 @@ function selectBarColor(usagePercent, settings = {}) {
     let yellowThreshold = settings.warnYellow !== undefined ? Number(settings.warnYellow) : 65;
     let redThreshold = settings.warnRed !== undefined ? Number(settings.warnRed) : 90;
 
-    let colorGreen = settings.colorBarGreen || "#4caf50";
-    let colorYellow = settings.colorBarYellow || "#d4a017";
-    let colorRed = settings.colorBarRed || "#e53935";
+    let colorGreen = settings.colorBarGreen || "#78ff78";
+    let colorYellow = settings.colorBarYellow || "#ffffb8";
+    let colorRed = settings.colorBarRed || "#ff6464";
 
     if (usagePercent >= redThreshold) {
         return colorRed;

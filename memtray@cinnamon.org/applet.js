@@ -4,7 +4,8 @@
  * Clean-room implementation of Windows MemInfo for the Cinnamon taskbar.
  *
  * Features:
- * - Dynamic Cairo/PangoCairo tray gauge icon (vertical left bar or horizontal bottom bar)
+ * - Pixel-accurate 16x16 MemInfo tray icon with horizontal top/bottom bar (segmented Standard Bar or continuous bar)
+ *   and exact 4x9 internal pixel bitmap font
  * - Right-click & left-click MemInfo popup menu with live dashboard & top processes
  * - Process unification (e.g. chrome [17]), desktop icon resolution, and >X MB row highlighting
  * - Memory Defragmenter (manual, periodic, hotkey, and high-memory triggered)
@@ -13,6 +14,7 @@
  */
 
 const Applet = imports.ui.applet;
+const cairo = imports.cairo;
 const Clutter = imports.gi.Clutter;
 const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
@@ -36,23 +38,184 @@ try {
 
 const UUID = "memtray@cinnamon.org";
 
+/**
+ * Exact 4x9 pixel bitmap glyphs extracted from Windows MemInfo's internal tray font.
+ * Note: Both '.' and ',' render as a 1px bottom dot so 3 digits + decimal separator
+ * occupy 4 + 1 + 4 + 1 + 1 + 1 + 4 = 16 pixels (exact fit in a 16x16 tray icon).
+ */
+const INTERNAL_GLYPHS = {
+    "0": [
+        ".##.",
+        "#..#",
+        "#..#",
+        "#..#",
+        "#..#",
+        "#..#",
+        "#..#",
+        "#..#",
+        ".##."
+    ],
+    "1": [
+        "..#.",
+        ".##.",
+        "..#.",
+        "..#.",
+        "..#.",
+        "..#.",
+        "..#.",
+        "..#.",
+        ".###"
+    ],
+    "2": [
+        "###.",
+        "...#",
+        "...#",
+        "...#",
+        ".##.",
+        "#...",
+        "#...",
+        "#...",
+        ".###"
+    ],
+    "3": [
+        "###.",
+        "...#",
+        "...#",
+        "...#",
+        ".##.",
+        "...#",
+        "...#",
+        "...#",
+        "###."
+    ],
+    "4": [
+        "#..#",
+        "#..#",
+        "#..#",
+        "#..#",
+        "####",
+        "...#",
+        "...#",
+        "...#",
+        "...#"
+    ],
+    "5": [
+        ".###",
+        "#...",
+        "#...",
+        "#...",
+        ".##.",
+        "...#",
+        "...#",
+        "...#",
+        "###."
+    ],
+    "6": [
+        ".##.",
+        "#...",
+        "#...",
+        "#...",
+        "###.",
+        "#..#",
+        "#..#",
+        "#..#",
+        ".##."
+    ],
+    "7": [
+        "####",
+        "...#",
+        "...#",
+        "..#.",
+        "..#.",
+        "..#.",
+        ".#..",
+        ".#..",
+        ".#.."
+    ],
+    "8": [
+        ".##.",
+        "#..#",
+        "#..#",
+        "#..#",
+        ".##.",
+        "#..#",
+        "#..#",
+        "#..#",
+        ".##."
+    ],
+    "9": [
+        ".##.",
+        "#..#",
+        "#..#",
+        "#..#",
+        ".###",
+        "...#",
+        "...#",
+        "...#",
+        ".##."
+    ],
+    ".": [
+        ".",
+        ".",
+        ".",
+        ".",
+        ".",
+        ".",
+        ".",
+        ".",
+        "#"
+    ],
+    ",": [
+        ".",
+        ".",
+        ".",
+        ".",
+        ".",
+        ".",
+        ".",
+        ".",
+        "#"
+    ],
+    "%": [
+        "##..#",
+        "##..#",
+        "...#.",
+        "..#..",
+        "..#..",
+        ".#...",
+        "#..##",
+        "#..##",
+        "....."
+    ]
+};
+
 const BUILTIN_THEMES = {
     "meminfo-dark": {
         "menu-color-mode": "dark",
         "color-menu-highlight": "#b43434",
         "color-tray-text": "#ffffff",
-        "color-tray-bg": "#1e1e1e",
-        "color-bar-bg": "#2d2d2d",
-        "color-bar-green": "#4caf50",
-        "color-bar-yellow": "#d4a017",
-        "color-bar-red": "#e53935"
+        "color-tray-bg": "#000000",
+        "color-bar-bg": "#787878",
+        "color-bar-green": "#78ff78",
+        "color-bar-yellow": "#ffffb8",
+        "color-bar-red": "#ff6464"
+    },
+    "meminfo-mono": {
+        "menu-color-mode": "dark",
+        "color-menu-highlight": "#b43434",
+        "color-tray-text": "#ffffff",
+        "color-tray-bg": "#000000",
+        "color-bar-bg": "#747474",
+        "color-bar-green": "#ffffff",
+        "color-bar-yellow": "#ffffb8",
+        "color-bar-red": "#ff6464"
     },
     "meminfo-light": {
         "menu-color-mode": "light",
         "color-menu-highlight": "#d9534f",
         "color-tray-text": "#1a1a1a",
         "color-tray-bg": "#f0f0f0",
-        "color-bar-bg": "#cfcfcf",
+        "color-bar-bg": "#b0b0b0",
         "color-bar-green": "#2e7d32",
         "color-bar-yellow": "#ef6c00",
         "color-bar-red": "#c62828"
@@ -62,7 +225,7 @@ const BUILTIN_THEMES = {
         "color-menu-highlight": "#1b5e20",
         "color-tray-text": "#00e676",
         "color-tray-bg": "#0a0a0a",
-        "color-bar-bg": "#142814",
+        "color-bar-bg": "#264d26",
         "color-bar-green": "#00e676",
         "color-bar-yellow": "#ffea00",
         "color-bar-red": "#ff1744"
@@ -72,7 +235,7 @@ const BUILTIN_THEMES = {
         "color-menu-highlight": "#1565c0",
         "color-tray-text": "#e3f2fd",
         "color-tray-bg": "#0d1b2a",
-        "color-bar-bg": "#1b263b",
+        "color-bar-bg": "#415a77",
         "color-bar-green": "#29b6f6",
         "color-bar-yellow": "#ffa726",
         "color-bar-red": "#ef5350"
@@ -80,118 +243,122 @@ const BUILTIN_THEMES = {
 };
 
 /**
- * Custom Cairo + PangoCairo canvas widget rendering the MemInfo tray icon:
- * - Vertical bar on left + value text on right (default, as in Windows MemInfo)
- * - Or value text on top + horizontal bar at bottom (when "Bar at bottom" is enabled)
+ * Pixel-accurate Cairo canvas widget rendering the MemInfo tray icon:
+ * - Horizontal bar at top (default) or bottom (when "Bar at bottom" is checked)
+ * - Standard bar ON: 5-segment discrete block bar (matching MemInfoTray.png)
+ * - Standard bar OFF: continuous solid bar with subtle top-row shading (matching reference video)
+ * - Internal font ON: exact 4x9 pixel bitmap font on a 16x16 grid
+ * - Internal font OFF: PangoCairo custom font below/above horizontal bar
  */
-const MemTrayCanvas = GObject.registerClass({
-    GTypeName: 'MemTrayCanvas',
-}, class MemTrayCanvas extends St.DrawingArea {
-    _init(panelHeight = 28) {
-        super._init({
+class MemTrayCanvas {
+    constructor(panelHeight = 40) {
+        this.actor = new St.DrawingArea({
             style_class: 'memtray-canvas',
             reactive: false,
+            x_align: Clutter.ActorAlign.CENTER,
             y_align: Clutter.ActorAlign.CENTER
         });
 
-        this._panelHeight = panelHeight || 28;
-        this._text = "0,0";
+        this._panelHeight = panelHeight || 40;
+        this._text = "0,00";
         this._usagePercent = 0;
 
         this._options = {
             useInternalFont: true,
-            customFont: "Sans Bold 9",
+            customFont: "Sans Bold 8",
             useBarColorForFont: false,
             transparentBg: true,
             opaqueBar: true,
             standardBar: false,
             barAtBottom: false,
             colorTrayText: "#ffffff",
-            colorTrayBg: "#1e1e1e",
-            colorBarBg: "#2d2d2d",
-            activeBarColor: "#4caf50"
+            colorTrayBg: "#000000",
+            colorBarBg: "#787878",
+            activeBarColor: "#78ff78"
         };
 
-        this._measuredWidth = 42;
-        this._measuredHeight = Math.max(18, Math.min(26, this._panelHeight - 4));
+        this._pixelScale = 1;
+        this._logicalWidth = 16;
+        this._logicalHeight = 16;
+        this._measuredWidth = 16;
+        this._measuredHeight = 16;
 
-        this.connect('repaint', this._onRepaint.bind(this));
+        this.actor.set_size(16, 16);
+        this.actor.connect('repaint', this._onRepaint.bind(this));
     }
 
     setPanelHeight(panelHeight) {
-        this._panelHeight = panelHeight || 28;
+        this._panelHeight = panelHeight || 40;
         this._recalcSize();
-        this.queue_relayout();
-        this.queue_repaint();
+        this.actor.queue_repaint();
     }
 
     updateState(text, usagePercent, options) {
-        this._text = String(text !== undefined && text !== null ? text : "0,0");
+        this._text = String(text !== undefined && text !== null ? text : "0,00");
         this._usagePercent = Math.max(0, Math.min(100, Number(usagePercent) || 0));
         if (options) {
             Object.assign(this._options, options);
         }
         this._recalcSize();
-        this.queue_relayout();
-        this.queue_repaint();
+        this.actor.queue_repaint();
     }
 
-    _getFontDescription() {
-        let fontStr = "Sans Bold 9.5";
-        if (!this._options.useInternalFont && this._options.customFont) {
-            fontStr = this._options.customFont;
-        } else {
-            let fontSizePt = Math.max(8, Math.min(11, Math.round((this._panelHeight - 6) * 0.42 * 10) / 10));
-            fontStr = `Sans Bold ${fontSizePt}`;
+    _getBitmapGlyphs(text) {
+        let glyphs = [];
+        for (let i = 0; i < text.length; i++) {
+            let ch = text[i];
+            if (INTERNAL_GLYPHS[ch]) {
+                glyphs.push(INTERNAL_GLYPHS[ch]);
+            }
         }
-        try {
-            return Pango.FontDescription.from_string(fontStr);
-        } catch (e) {
-            return Pango.FontDescription.from_string("Sans Bold 9.5");
-        }
+        return glyphs;
     }
 
     _recalcSize() {
-        let h = Math.max(18, Math.min(28, this._panelHeight - 4));
-        this._measuredHeight = h;
+        // Use integer pixel scaling (1x = 16x16 for standard panels up to 52px, 2x = 32x32 for HiDPI panels)
+        this._pixelScale = this._panelHeight >= 56 ? 2 : 1;
 
-        // Estimate text width accurately using Pango context if available
-        let charCount = Math.max(2, this._text.length);
-        let approxTextW = Math.ceil(charCount * 7.2) + 4;
-        try {
-            let pangoCtx = this.get_pango_context();
-            if (pangoCtx) {
-                let layout = Pango.Layout.new(pangoCtx);
-                layout.set_font_description(this._getFontDescription());
-                layout.set_text(this._text, -1);
-                let [pw, _ph] = layout.get_pixel_size();
-                if (pw > 0) {
-                    approxTextW = pw + 4;
+        if (this._options.useInternalFont) {
+            let glyphs = this._getBitmapGlyphs(this._text);
+            let bitmapW = 16;
+            if (glyphs.length > 0) {
+                let totalGlyphW = 0;
+                for (let i = 0; i < glyphs.length; i++) {
+                    totalGlyphW += glyphs[i][0].length;
                 }
+                totalGlyphW += Math.max(0, glyphs.length - 1);
+                bitmapW = Math.max(16, totalGlyphW);
             }
-        } catch (e) {
-            // Fallback to approximate width
-        }
-
-        if (this._options.barAtBottom) {
-            this._measuredWidth = Math.max(26, approxTextW + 6);
+            this._logicalWidth = bitmapW;
+            this._logicalHeight = 16;
+            this._measuredWidth = this._logicalWidth * this._pixelScale;
+            this._measuredHeight = this._logicalHeight * this._pixelScale;
         } else {
-            // Left vertical bar (6px) + 4px gap + text width + 4px padding
-            this._measuredWidth = Math.max(32, 6 + 4 + approxTextW + 4);
+            // Custom Pango font mode
+            let approxW = Math.max(20, this._text.length * 7 + 4);
+            let approxH = Math.max(18, Math.min(28, this._panelHeight - 6));
+            try {
+                let pangoCtx = this.actor.get_pango_context();
+                if (pangoCtx) {
+                    let layout = Pango.Layout.new(pangoCtx);
+                    let desc = Pango.FontDescription.from_string(this._options.customFont || "Sans Bold 8");
+                    layout.set_font_description(desc);
+                    layout.set_text(this._text, -1);
+                    let [pw, ph] = layout.get_pixel_size();
+                    if (pw > 0) approxW = Math.max(18, pw + 2);
+                    if (ph > 0) approxH = Math.max(16, ph + 6);
+                }
+            } catch (e) {}
+            this._measuredWidth = approxW;
+            this._measuredHeight = approxH;
         }
+
+        this.actor.set_size(this._measuredWidth, this._measuredHeight);
     }
 
-    vfunc_get_preferred_width(_forHeight) {
-        return [this._measuredWidth, this._measuredWidth];
-    }
-
-    vfunc_get_preferred_height(_forWidth) {
-        return [this._measuredHeight, this._measuredHeight];
-    }
-
-    _onRepaint(_area) {
-        let cr = this.get_context();
-        let [w, h] = this.get_surface_size();
+    _onRepaint(area) {
+        let cr = area.get_context();
+        let [w, h] = area.get_surface_size();
         if (w <= 0 || h <= 0) {
             cr.$dispose();
             return;
@@ -199,63 +366,74 @@ const MemTrayCanvas = GObject.registerClass({
 
         cr.save();
 
-        // 1. Optional Tray Background
-        if (!this._options.transparentBg) {
-            let bg = Memory.parseColor(this._options.colorTrayBg, [0.12, 0.12, 0.12, 1.0]);
-            cr.setSourceRGBA(bg[0], bg[1], bg[2], bg[3]);
-            this._drawRoundedRect(cr, 0, 0, w, h, 3);
-            cr.fill();
-        }
-
-        let barAlpha = this._options.opaqueBar ? 1.0 : 0.6;
-        let troughCol = Memory.parseColor(this._options.colorBarBg, [0.18, 0.18, 0.18, 1.0]);
-        let fillCol = Memory.parseColor(this._options.activeBarColor, [0.30, 0.69, 0.31, 1.0]);
+        let barAlpha = this._options.opaqueBar ? 1.0 : 0.65;
+        let troughCol = Memory.parseColor(this._options.colorBarBg, [0.47, 0.47, 0.47, 1.0]);
+        let fillCol = Memory.parseColor(this._options.activeBarColor, [0.47, 1.0, 0.47, 1.0]);
         let textColStr = this._options.useBarColorForFont
             ? this._options.activeBarColor
             : this._options.colorTrayText;
         let textCol = Memory.parseColor(textColStr, [1.0, 1.0, 1.0, 1.0]);
-
         let ratio = this._usagePercent / 100.0;
 
-        // Prepare Pango layout for crisp text rendering
-        let layout = PangoCairo.create_layout(cr);
-        layout.set_font_description(this._getFontDescription());
-        layout.set_text(this._text, -1);
-        let [textW, textH] = layout.get_pixel_size();
+        if (this._options.useInternalFont) {
+            // Crisp pixel-aligned 16x16 rendering (no subpixel antialiasing blur)
+            cr.setAntialias(cairo.Antialias.NONE);
+            let scale = this._pixelScale || 1;
+            let lw = this._logicalWidth || 16;
+            let lh = 16;
+            let offsetX = Math.floor((w - lw * scale) / 2);
+            let offsetY = Math.floor((h - lh * scale) / 2);
 
-        if (this._options.barAtBottom) {
-            // Horizontal bar at the bottom, text centered above
-            let barH = 4;
-            let barY = h - barH - 1;
-            let barX = 2;
-            let barW = Math.max(8, w - 4);
+            cr.translate(offsetX, offsetY);
+            cr.scale(scale, scale);
 
-            this._drawGaugeBar(cr, barX, barY, barW, barH, ratio, troughCol, fillCol, barAlpha, false);
+            // 1. Optional non-transparent background
+            if (!this._options.transparentBg) {
+                let bg = Memory.parseColor(this._options.colorTrayBg, [0.0, 0.0, 0.0, 1.0]);
+                cr.setSourceRGBA(bg[0], bg[1], bg[2], bg[3]);
+                cr.rectangle(0, 0, lw, lh);
+                cr.fill();
+            }
 
-            let textX = Math.max(1, Math.round((w - textW) / 2));
-            let availH = Math.max(10, barY - 1);
-            let textY = Math.max(0, Math.round((availH - textH) / 2));
+            // 2. Determine vertical coordinates for Horizontal Bar and Bitmap Digits
+            // Default (barAtBottom == false): Bar at top (y=0..3), 3px gap (y=4..6), Digits at bottom (y=7..15)
+            // When barAtBottom == true: Digits at top (y=0..8), 3px gap (y=9..11), Bar at bottom (y=12..15)
+            let barY = this._options.barAtBottom ? 12 : 0;
+            let textY = this._options.barAtBottom ? 0 : 7;
 
-            cr.setSourceRGBA(textCol[0], textCol[1], textCol[2], textCol[3]);
-            cr.moveTo(textX, textY);
-            PangoCairo.show_layout(cr, layout);
+            this._drawPixelHorizontalBar(cr, 0, barY, lw, 4, ratio, troughCol, fillCol, barAlpha);
+            this._drawPixelBitmapText(cr, 0, textY, lw, textCol);
         } else {
-            // Vertical bar on the left, text on the right (Classic MemInfo Tray Layout)
-            let barW = 6;
-            let barPadY = 2;
-            let barX = 2;
-            let barY = barPadY;
-            let barH = Math.max(10, h - barPadY * 2);
+            // Custom Font mode (PangoCairo) with Horizontal Bar at top (default) or bottom
+            if (!this._options.transparentBg) {
+                let bg = Memory.parseColor(this._options.colorTrayBg, [0.0, 0.0, 0.0, 1.0]);
+                cr.setSourceRGBA(bg[0], bg[1], bg[2], bg[3]);
+                cr.rectangle(0, 0, w, h);
+                cr.fill();
+            }
 
-            this._drawGaugeBar(cr, barX, barY, barW, barH, ratio, troughCol, fillCol, barAlpha, true);
+            let barH = 4;
+            let barY = this._options.barAtBottom ? (h - barH) : 0;
+            let textAvailY = this._options.barAtBottom ? 0 : (barH + 2);
+            let textAvailH = Math.max(8, h - barH - 2);
 
-            let textAreaX = barX + barW + 4;
-            let textAreaW = Math.max(10, w - textAreaX - 1);
-            let textX = textAreaX + Math.max(0, Math.round((textAreaW - textW) / 2));
-            let textY = Math.round((h - textH) / 2);
+            cr.setAntialias(cairo.Antialias.NONE);
+            this._drawPixelHorizontalBar(cr, 0, barY, w, barH, ratio, troughCol, fillCol, barAlpha);
+
+            cr.setAntialias(cairo.Antialias.DEFAULT);
+            let layout = PangoCairo.create_layout(cr);
+            try {
+                layout.set_font_description(Pango.FontDescription.from_string(this._options.customFont || "Sans Bold 8"));
+            } catch (e) {
+                layout.set_font_description(Pango.FontDescription.from_string("Sans Bold 8"));
+            }
+            layout.set_text(this._text, -1);
+            let [tw, th] = layout.get_pixel_size();
+            let tx = Math.max(0, Math.round((w - tw) / 2));
+            let ty = textAvailY + Math.round((textAvailH - th) / 2);
 
             cr.setSourceRGBA(textCol[0], textCol[1], textCol[2], textCol[3]);
-            cr.moveTo(textX, textY);
+            cr.moveTo(tx, ty);
             PangoCairo.show_layout(cr, layout);
         }
 
@@ -263,64 +441,91 @@ const MemTrayCanvas = GObject.registerClass({
         cr.$dispose();
     }
 
-    _drawGaugeBar(cr, x, y, w, h, ratio, troughCol, fillCol, barAlpha, isVertical) {
+    /**
+     * Draws the horizontal memory bar at (x, y) with width `w` and height `h` (4px):
+     * - Standard bar ON: 5 segmented blocks with 1px gaps (matching MemInfoTray.png)
+     * - Standard bar OFF: continuous solid bar with subtle top-row shading (matching reference video)
+     */
+    _drawPixelHorizontalBar(cr, x, y, w, h, ratio, troughCol, fillCol, barAlpha) {
         if (this._options.standardBar) {
-            // Standard smooth progress bar
-            let r = Math.min(w, h) / 2;
-            cr.setSourceRGBA(troughCol[0], troughCol[1], troughCol[2], 0.75 * barAlpha);
-            this._drawRoundedRect(cr, x, y, w, h, r);
-            cr.fill();
+            // Segmented Standard Bar (exact match to MemInfoTray.png: 15px wide across 5 blocks)
+            let barW = Math.min(w, 15);
+            let startX = x + Math.floor((w - barW) / 2);
+            let filledCols = Math.round(barW * ratio);
 
-            if (ratio > 0) {
-                cr.setSourceRGBA(fillCol[0], fillCol[1], fillCol[2], barAlpha);
-                if (isVertical) {
-                    let fillH = Math.max(2, Math.round(h * ratio));
-                    this._drawRoundedRect(cr, x, y + h - fillH, w, fillH, r);
-                } else {
-                    let fillW = Math.max(2, Math.round(w * ratio));
-                    this._drawRoundedRect(cr, x, y, fillW, h, r);
+            for (let col = 0; col < barW; col++) {
+                // 1px vertical gap every 3rd pixel (columns 2, 5, 8, 11)
+                if (col === 2 || col === 5 || col === 8 || col === 11) {
+                    continue;
                 }
+                if (col < filledCols) {
+                    cr.setSourceRGBA(fillCol[0], fillCol[1], fillCol[2], barAlpha);
+                } else {
+                    cr.setSourceRGBA(troughCol[0], troughCol[1], troughCol[2], barAlpha);
+                }
+                cr.rectangle(startX + col, y, 1, h);
                 cr.fill();
             }
         } else {
-            // Classic MemInfo bordered gauge meter
-            cr.setSourceRGBA(troughCol[0], troughCol[1], troughCol[2], 0.92 * barAlpha);
-            cr.rectangle(x, y, w, h);
-            cr.fill();
+            // Non-standard continuous horizontal bar (exact match to reference video)
+            let fillW = Math.round(w * ratio);
 
-            if (ratio > 0) {
-                cr.setSourceRGBA(fillCol[0], fillCol[1], fillCol[2], barAlpha);
-                if (isVertical) {
-                    let innerH = Math.max(1, h - 2);
-                    let fillH = Math.max(1, Math.round(innerH * ratio));
-                    cr.rectangle(x + 1, y + 1 + (innerH - fillH), Math.max(1, w - 2), fillH);
-                } else {
-                    let innerW = Math.max(1, w - 2);
-                    let fillW = Math.max(1, Math.round(innerW * ratio));
-                    cr.rectangle(x + 1, y + 1, fillW, Math.max(1, h - 2));
-                }
+            // Unfilled right portion (trough)
+            if (fillW < w) {
+                cr.setSourceRGBA(troughCol[0] * 0.88, troughCol[1] * 0.88, troughCol[2] * 0.88, barAlpha);
+                cr.rectangle(x + fillW, y, w - fillW, 1);
+                cr.fill();
+
+                cr.setSourceRGBA(troughCol[0], troughCol[1], troughCol[2], barAlpha);
+                cr.rectangle(x + fillW, y + 1, w - fillW, Math.max(1, h - 1));
                 cr.fill();
             }
 
-            // Crisp 1px border frame
-            cr.setLineWidth(1.0);
-            cr.setSourceRGBA(0.55, 0.55, 0.55, 0.7 * barAlpha);
-            cr.rectangle(x + 0.5, y + 0.5, w - 1, h - 1);
-            cr.stroke();
+            // Filled left portion (active usage)
+            if (fillW > 0) {
+                cr.setSourceRGBA(fillCol[0] * 0.88, fillCol[1] * 0.88, fillCol[2] * 0.88, barAlpha);
+                cr.rectangle(x, y, fillW, 1);
+                cr.fill();
+
+                cr.setSourceRGBA(fillCol[0], fillCol[1], fillCol[2], barAlpha);
+                cr.rectangle(x, y + 1, fillW, Math.max(1, h - 1));
+                cr.fill();
+            }
         }
     }
 
-    _drawRoundedRect(cr, x, y, w, h, r) {
-        if (w <= 0 || h <= 0) return;
-        r = Math.min(r, w / 2, h / 2);
-        cr.newSubPath();
-        cr.arc(x + r, y + r, r, Math.PI, 1.5 * Math.PI);
-        cr.arc(x + w - r, y + r, r, 1.5 * Math.PI, 2 * Math.PI);
-        cr.arc(x + w - r, y + h - r, r, 0, 0.5 * Math.PI);
-        cr.arc(x + r, y + h - r, r, 0.5 * Math.PI, Math.PI);
-        cr.closePath();
+    /**
+     * Draws the 4x9 pixel bitmap glyphs onto the 16x16 logical canvas.
+     */
+    _drawPixelBitmapText(cr, areaX, areaY, areaW, textCol) {
+        let glyphs = this._getBitmapGlyphs(this._text);
+        if (glyphs.length === 0) return;
+
+        let totalW = 0;
+        for (let i = 0; i < glyphs.length; i++) {
+            totalW += glyphs[i][0].length;
+        }
+        totalW += Math.max(0, glyphs.length - 1);
+
+        let curX = areaX + Math.max(0, Math.floor((areaW - totalW) / 2));
+        cr.setSourceRGBA(textCol[0], textCol[1], textCol[2], textCol[3]);
+
+        for (let gIdx = 0; gIdx < glyphs.length; gIdx++) {
+            let glyph = glyphs[gIdx];
+            let gw = glyph[0].length;
+            for (let r = 0; r < glyph.length; r++) {
+                let rowStr = glyph[r];
+                for (let c = 0; c < gw; c++) {
+                    if (rowStr[c] === '#') {
+                        cr.rectangle(curX + c, areaY + r, 1, 1);
+                    }
+                }
+            }
+            curX += gw + 1;
+        }
+        cr.fill();
     }
-});
+}
 
 /**
  * Custom Menu Item Row matching Windows MemInfo's popup menu layout:
@@ -427,30 +632,27 @@ class MemTrayApplet extends Applet.Applet {
 
         this._refreshTimerId = 0;
         this._defragTimerId = 0;
-        this._singleClickTimeoutId = 0;
         this._lastHighMemTriggerTime = 0;
         this._hotkeyId = `memtray-defrag-${this.instance_id}`;
         this._screensaverSubId = 0;
         this._fileMonitor = null;
         this._fileMonitorId = 0;
 
+        this._headerRow = null;
+        this._usageRow = null;
+        this._physRow = null;
+        this._pageRow = null;
+
         this.actor.add_style_class_name('memtray-applet');
 
-        // 1. Tray Canvas Widget
+        // 1. Tray Canvas Widget (16x16 pixel-accurate MemInfo icon)
         this._canvas = new MemTrayCanvas(panel_height);
-        this.actor.add_actor(this._canvas);
+        this.actor.add_actor(this._canvas.actor);
 
         // 2. Main MemInfo Popup Menu (opens on right-click OR single left-click)
         this.menuManager = new PopupMenu.PopupMenuManager(this);
         this.menu = new Applet.AppletPopupMenu(this, orientation);
         this.menuManager.addMenu(this.menu);
-
-        this.menu.connect('open-state-changed', (_menu, isOpen) => {
-            if (isOpen) {
-                this._applyMenuTheme();
-                this._rebuildPopupMenu();
-            }
-        });
 
         // 3. Initialize Settings
         this._initSettings();
@@ -562,8 +764,22 @@ class MemTrayApplet extends Applet.Applet {
     }
 
     /**
+     * Toggles the main MemInfo popup menu safely:
+     * Builds items BEFORE opening so hovered items are never destroyed while the menu is open.
+     */
+    _toggleMainPopupMenu() {
+        if (this.menu.isOpen) {
+            this.menu.close();
+        } else {
+            this._applyMenuTheme();
+            this._rebuildPopupMenu();
+            this.menu.open(true);
+        }
+    }
+
+    /**
      * Button handling:
-     * - Right-click (button 3): opens the MemInfo popup menu (unless in Panel Edit Mode, where Cinnamon context menu is shown)
+     * - Right-click (button 3): opens the MemInfo popup menu
      * - Left-click (button 1):
      *     - Single click: toggles the MemInfo popup menu
      *     - Double click: executes the configured "Tray double click" action (e.g. Start Task Manager)
@@ -583,20 +799,15 @@ class MemTrayApplet extends Applet.Applet {
         let clickCount = event.get_click_count ? event.get_click_count() : 1;
 
         if (button === 3) {
-            // Right-click opens the rich MemInfo popup menu just like on Windows!
             if (this._applet_context_menu && this._applet_context_menu.isOpen) {
                 this._applet_context_menu.toggle();
             }
-            this.menu.toggle();
+            this._toggleMainPopupMenu();
             return true;
         }
 
         if (button === 1) {
             if (clickCount >= 2) {
-                if (this._singleClickTimeoutId) {
-                    Mainloop.source_remove(this._singleClickTimeoutId);
-                    this._singleClickTimeoutId = 0;
-                }
                 if (this.menu.isOpen) {
                     this.menu.close();
                 }
@@ -604,7 +815,7 @@ class MemTrayApplet extends Applet.Applet {
                 return true;
             }
 
-            this.menu.toggle();
+            this._toggleMainPopupMenu();
             return true;
         }
 
@@ -635,7 +846,6 @@ class MemTrayApplet extends Applet.Applet {
         } else if (mode === "dark") {
             useDark = true;
         } else {
-            // Automatic: inspect current GTK/Cinnamon theme name
             try {
                 let gtkTheme = Main.themeManager ? (global.settings.get_string("gtk-theme") || "") : "";
                 useDark = !gtkTheme.toLowerCase().includes("light");
@@ -651,6 +861,10 @@ class MemTrayApplet extends Applet.Applet {
 
     _rebuildPopupMenu() {
         this.menu.removeAll();
+        this._headerRow = null;
+        this._usageRow = null;
+        this._physRow = null;
+        this._pageRow = null;
 
         let memStats = this._lastMemStats || Memory.readMemoryStats(this.page_file_mode || "commit");
 
@@ -674,36 +888,36 @@ class MemTrayApplet extends Applet.Applet {
                     showPageFile: this.show_page_file,
                     showFreeMemory: this.show_free_memory
                 });
-                let headerRow = new MemTrayMenuRow(headerText, null, {
+                this._headerRow = new MemTrayMenuRow(headerText, null, {
                     reactive: false,
                     isHeader: true
                 });
-                this.menu.addMenuItem(headerRow);
+                this.menu.addMenuItem(this._headerRow);
             }
 
             let activePct = Memory.getActiveUsagePercent(memStats, {
                 showPageFile: this.show_page_file
             });
-            let usageRow = new MemTrayMenuRow("Memory Usage", `${activePct}%`, {
+            this._usageRow = new MemTrayMenuRow("Memory Usage", `${activePct}%`, {
                 reactive: false
             });
-            this.menu.addMenuItem(usageRow);
+            this.menu.addMenuItem(this._usageRow);
 
             let physBytes = this.show_free_memory ? memStats.ramFree : memStats.ramUsed;
-            let physRow = new MemTrayMenuRow(
+            this._physRow = new MemTrayMenuRow(
                 "Physical Memory",
                 Memory.formatDashboardPair(physBytes, memStats.ramTotal),
                 { reactive: false }
             );
-            this.menu.addMenuItem(physRow);
+            this.menu.addMenuItem(this._physRow);
 
             let pageBytes = this.show_free_memory ? memStats.pageFree : memStats.pageUsed;
-            let pageRow = new MemTrayMenuRow(
+            this._pageRow = new MemTrayMenuRow(
                 "Page File",
                 Memory.formatDashboardPair(pageBytes, memStats.pageTotal),
                 { reactive: false }
             );
-            this.menu.addMenuItem(pageRow);
+            this.menu.addMenuItem(this._pageRow);
         }
 
         // 3. Top Memory Usage Processes Section
@@ -788,6 +1002,27 @@ class MemTrayApplet extends Applet.Applet {
         this.menu.addMenuItem(exitItem);
     }
 
+    /**
+     * Updates only the non-reactive dashboard text labels in-place when the menu is open,
+     * preserving key_focus and hover state on all menu items.
+     */
+    _updateOpenMenuDashboard(memStats) {
+        if (this._usageRow) {
+            let activePct = Memory.getActiveUsagePercent(memStats, {
+                showPageFile: this.show_page_file
+            });
+            this._usageRow.setValueText(`${activePct}%`);
+        }
+        if (this._physRow) {
+            let physBytes = this.show_free_memory ? memStats.ramFree : memStats.ramUsed;
+            this._physRow.setValueText(Memory.formatDashboardPair(physBytes, memStats.ramTotal));
+        }
+        if (this._pageRow) {
+            let pageBytes = this.show_free_memory ? memStats.pageFree : memStats.pageUsed;
+            this._pageRow.setValueText(Memory.formatDashboardPair(pageBytes, memStats.pageTotal));
+        }
+    }
+
     _promptProcessAction(proc) {
         let pidsStr = proc.pids.slice(0, 8).join(", ") + (proc.pids.length > 8 ? "..." : "");
         let msg = `Process: ${proc.displayName}\nMemory Usage: ${proc.formattedMemory}\nPID(s): ${pidsStr}\n\nDo you want to terminate this process?`;
@@ -828,22 +1063,22 @@ class MemTrayApplet extends Applet.Applet {
         let activeBarColor = Memory.selectBarColor(usagePercent, {
             warnYellow: this.warn_yellow !== undefined ? this.warn_yellow : 65,
             warnRed: this.warn_red !== undefined ? this.warn_red : 90,
-            colorBarGreen: this.color_bar_green || "#4caf50",
-            colorBarYellow: this.color_bar_yellow || "#d4a017",
-            colorBarRed: this.color_bar_red || "#e53935"
+            colorBarGreen: this.color_bar_green || "#78ff78",
+            colorBarYellow: this.color_bar_yellow || "#ffffb8",
+            colorBarRed: this.color_bar_red || "#ff6464"
         });
 
         this._canvas.updateState(trayText, usagePercent, {
             useInternalFont: this.use_internal_font !== false,
-            customFont: this.custom_font || "Sans Bold 9",
+            customFont: this.custom_font || "Sans Bold 8",
             useBarColorForFont: Boolean(this.use_bar_color_for_font),
             transparentBg: this.transparent_bg !== false,
             opaqueBar: this.opaque_bar !== false,
             standardBar: Boolean(this.standard_bar),
             barAtBottom: Boolean(this.bar_at_bottom),
             colorTrayText: this.color_tray_text || "#ffffff",
-            colorTrayBg: this.color_tray_bg || "#1e1e1e",
-            colorBarBg: this.color_bar_bg || "#2d2d2d",
+            colorTrayBg: this.color_tray_bg || "#000000",
+            colorBarBg: this.color_bar_bg || "#787878",
             activeBarColor: activeBarColor
         });
 
@@ -860,9 +1095,9 @@ class MemTrayApplet extends Applet.Applet {
             this.set_applet_tooltip("");
         }
 
-        // Rebuild menu live if currently open
+        // Update dashboard numbers in-place if menu is open (never destroy hovered actors!)
         if (this.menu && this.menu.isOpen) {
-            this._rebuildPopupMenu();
+            this._updateOpenMenuDashboard(memStats);
         }
 
         // Check High Memory Warning Threshold
@@ -876,7 +1111,6 @@ class MemTrayApplet extends Applet.Applet {
         }
 
         let nowSec = Math.floor(GLib.get_monotonic_time() / 1000000);
-        // Cooldown of 120 seconds between automatic high-memory triggers
         if (this._lastHighMemTriggerTime > 0 && (nowSec - this._lastHighMemTriggerTime) < 120) {
             return;
         }
@@ -940,7 +1174,6 @@ class MemTrayApplet extends Applet.Applet {
             }
         };
 
-        // First try passwordless sudo / non-interactive sync + cache drop
         let nonInteractiveCmd = `sh -c "sync; sudo -n sh -c 'echo 3 > /proc/sys/vm/drop_caches' 2>/dev/null || true"`;
         Util.spawnCommandLineAsyncIO(nonInteractiveCmd, (_stdout, _stderr, _exitCode) => {
             let checkStats = Memory.readMemoryStats(this.page_file_mode || "commit");
@@ -949,7 +1182,6 @@ class MemTrayApplet extends Applet.Applet {
                 finishDefrag();
                 return;
             }
-            // If manual click and passwordless sudo wasn't configured, try pkexec or finish cleanly
             let pkexecCmd = `sh -c "pkexec sh -c 'sync && echo 3 > /proc/sys/vm/drop_caches' 2>/dev/null || sync"`;
             Util.spawnCommandLineAsyncIO(pkexecCmd, () => {
                 finishDefrag();
@@ -1108,7 +1340,7 @@ class MemTrayApplet extends Applet.Applet {
     }
 
     on_panel_height_changed() {
-        this._panel_height = this.panel ? this.panel.height : 28;
+        this._panel_height = this.panel ? this.panel.height : 40;
         this._canvas.setPanelHeight(this._panel_height);
         this.update(true);
     }

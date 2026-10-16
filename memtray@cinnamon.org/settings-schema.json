@@ -475,6 +475,7 @@
     "options": {
       "Current Colors": "current",
       "MemInfo Dark (Default)": "meminfo-dark",
+      "MemInfo Monochrome (White Bar)": "meminfo-mono",
       "MemInfo Light": "meminfo-light",
       "High Contrast Green": "matrix-green",
       "Ocean Blue": "ocean-blue"
@@ -510,35 +511,35 @@
 
   "color-tray-bg": {
     "type": "colorchooser",
-    "default": "#1e1e1e",
+    "default": "#000000",
     "description": "Icon Tray - Background",
     "tooltip": "Background color of the taskbar tray icon when 'Transparent background' is unchecked."
   },
 
   "color-bar-bg": {
     "type": "colorchooser",
-    "default": "#2d2d2d",
+    "default": "#787878",
     "description": "Icon Bar - Background",
     "tooltip": "Trough background color of the memory gauge bar."
   },
 
   "color-bar-green": {
     "type": "colorchooser",
-    "default": "#4caf50",
+    "default": "#78ff78",
     "description": "Icon Bar - \"Normal / Green\"",
     "tooltip": "Bar fill color when memory usage is normal (below Yellow threshold)."
   },
 
   "color-bar-yellow": {
     "type": "colorchooser",
-    "default": "#d4a017",
+    "default": "#ffffb8",
     "description": "Icon Bar - \"Yellow\"",
     "tooltip": "Bar fill color when memory usage is in warning range (between Yellow and Red thresholds)."
   },
 
   "color-bar-red": {
     "type": "colorchooser",
-    "default": "#e53935",
+    "default": "#ff6464",
     "description": "Icon Bar - \"Red\"",
     "tooltip": "Bar fill color when memory usage is critical (at or above Red threshold)."
   },
