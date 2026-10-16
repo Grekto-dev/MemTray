@@ -1,0 +1,550 @@
+{
+  "layout": {
+    "type": "layout",
+    "pages": [
+      "page-general",
+      "page-additional",
+      "page-tray-menu",
+      "page-display",
+      "page-themes"
+    ],
+    "page-general": {
+      "type": "page",
+      "title": "General",
+      "sections": [
+        "sec-general-main",
+        "sec-general-warnings",
+        "sec-general-high-mem"
+      ]
+    },
+    "page-additional": {
+      "type": "page",
+      "title": "Additional",
+      "sections": [
+        "sec-additional-defrag",
+        "sec-additional-advanced"
+      ]
+    },
+    "page-tray-menu": {
+      "type": "page",
+      "title": "Tray Menu",
+      "sections": [
+        "sec-menu-processes",
+        "sec-menu-more"
+      ]
+    },
+    "page-display": {
+      "type": "page",
+      "title": "Display",
+      "sections": [
+        "sec-display-font",
+        "sec-display-appearance"
+      ]
+    },
+    "page-themes": {
+      "type": "page",
+      "title": "Themes",
+      "sections": [
+        "sec-themes-preset",
+        "sec-themes-items"
+      ]
+    },
+    "sec-general-main": {
+      "type": "section",
+      "title": "General",
+      "keys": [
+        "show-page-file",
+        "show-free-memory",
+        "show-percentage",
+        "btn-open-classic-settings"
+      ]
+    },
+    "sec-general-warnings": {
+      "type": "section",
+      "title": "Warnings — Change bar color when memory is above a certain value",
+      "keys": [
+        "warn-yellow",
+        "warn-red"
+      ]
+    },
+    "sec-general-high-mem": {
+      "type": "section",
+      "title": "On high memory usage (when memory is above Red threshold)",
+      "keys": [
+        "high-mem-notify",
+        "high-mem-log",
+        "high-mem-defrag",
+        "high-mem-msgbox"
+      ]
+    },
+    "sec-additional-defrag": {
+      "type": "section",
+      "title": "Memory Defragmenter",
+      "keys": [
+        "defrag-periodic",
+        "defrag-interval",
+        "defrag-hotkey",
+        "btn-defrag-now"
+      ]
+    },
+    "sec-additional-advanced": {
+      "type": "section",
+      "title": "Advanced",
+      "keys": [
+        "refresh-rate",
+        "tray-double-click",
+        "display-off-on-lock",
+        "show-tooltip",
+        "page-file-mode",
+        "task-manager-cmd"
+      ]
+    },
+    "sec-menu-processes": {
+      "type": "section",
+      "title": "Processes",
+      "keys": [
+        "show-top-processes",
+        "top-processes-count",
+        "process-display-mode",
+        "highlight-processes",
+        "highlight-threshold-mb",
+        "show-process-name",
+        "unify-processes"
+      ]
+    },
+    "sec-menu-more": {
+      "type": "section",
+      "title": "More",
+      "keys": [
+        "show-dashboard",
+        "show-tray-value-info"
+      ]
+    },
+    "sec-display-font": {
+      "type": "section",
+      "title": "Font",
+      "keys": [
+        "use-internal-font",
+        "custom-font",
+        "use-bar-color-for-font"
+      ]
+    },
+    "sec-display-appearance": {
+      "type": "section",
+      "title": "Appearance",
+      "keys": [
+        "transparent-bg",
+        "opaque-bar",
+        "standard-bar",
+        "bar-at-bottom",
+        "show-percent-sign"
+      ]
+    },
+    "sec-themes-preset": {
+      "type": "section",
+      "title": "Theme",
+      "keys": [
+        "theme-preset"
+      ]
+    },
+    "sec-themes-items": {
+      "type": "section",
+      "title": "Display Items",
+      "keys": [
+        "menu-color-mode",
+        "color-menu-highlight",
+        "color-tray-text",
+        "color-tray-bg",
+        "color-bar-bg",
+        "color-bar-green",
+        "color-bar-yellow",
+        "color-bar-red"
+      ]
+    }
+  },
+
+  "show-page-file": {
+    "type": "checkbox",
+    "default": false,
+    "description": "Show page file instead of physical memory",
+    "tooltip": "Displays Page File (Swap / Commit) usage instead of Physical Memory (RAM) in the taskbar tray icon."
+  },
+
+  "show-free-memory": {
+    "type": "checkbox",
+    "default": false,
+    "description": "Show free memory instead of memory usage",
+    "tooltip": "Displays free available memory instead of used memory in the taskbar tray icon."
+  },
+
+  "show-percentage": {
+    "type": "checkbox",
+    "default": false,
+    "description": "Show percentage instead of actual value",
+    "tooltip": "Displays percentage (0-100) instead of GB/MB value in the taskbar tray icon."
+  },
+
+  "btn-open-classic-settings": {
+    "type": "button",
+    "description": "Open MemInfo Classic Settings Window...",
+    "callback": "on_open_classic_settings_pressed",
+    "tooltip": "Opens the standalone 5-tab MemInfo Settings dialog."
+  },
+
+  "warn-yellow": {
+    "type": "spinbutton",
+    "default": 65,
+    "min": 1,
+    "max": 99,
+    "step": 1,
+    "units": "%",
+    "description": "Yellow",
+    "tooltip": "Change bar color to Yellow when memory usage is above this percentage."
+  },
+
+  "warn-red": {
+    "type": "spinbutton",
+    "default": 90,
+    "min": 1,
+    "max": 100,
+    "step": 1,
+    "units": "%",
+    "description": "Red",
+    "tooltip": "Change bar color to Red and trigger high memory actions when memory usage is above this percentage."
+  },
+
+  "high-mem-notify": {
+    "type": "checkbox",
+    "default": true,
+    "description": "Show a notification",
+    "tooltip": "Displays a desktop notification when memory usage exceeds the Red warning threshold."
+  },
+
+  "high-mem-log": {
+    "type": "checkbox",
+    "default": false,
+    "description": "Write to log file",
+    "tooltip": "Appends a timestamped high-memory entry to ~/.local/share/memtray/memtray.log."
+  },
+
+  "high-mem-defrag": {
+    "type": "checkbox",
+    "default": true,
+    "description": "Defrag memory",
+    "tooltip": "Automatically triggers memory defragmentation / cache cleanup when memory usage exceeds the Red warning threshold."
+  },
+
+  "high-mem-msgbox": {
+    "type": "checkbox",
+    "default": false,
+    "description": "Show a message box",
+    "tooltip": "Shows a modal warning dialog when memory usage exceeds the Red warning threshold."
+  },
+
+  "defrag-periodic": {
+    "type": "checkbox",
+    "default": false,
+    "description": "Defrag every N minutes",
+    "tooltip": "Periodically runs the memory defragmenter at the specified interval."
+  },
+
+  "defrag-interval": {
+    "type": "spinbutton",
+    "default": 120,
+    "min": 1,
+    "max": 1440,
+    "step": 5,
+    "units": "minutes",
+    "dependency": "defrag-periodic",
+    "description": "Defrag interval",
+    "tooltip": "Interval in minutes between automatic memory defragmenter runs."
+  },
+
+  "defrag-hotkey": {
+    "type": "keybinding",
+    "default": "",
+    "description": "Defrag hotkey",
+    "tooltip": "Global keyboard shortcut to trigger Memory Defragmenter."
+  },
+
+  "btn-defrag-now": {
+    "type": "button",
+    "description": "Run Memory Defragmenter Now",
+    "callback": "on_defrag_button_pressed",
+    "tooltip": "Immediately triggers memory defragmentation and cache reclamation."
+  },
+
+  "refresh-rate": {
+    "type": "spinbutton",
+    "default": 2000,
+    "min": 250,
+    "max": 60000,
+    "step": 250,
+    "units": "milliseconds",
+    "description": "Tray info refresh rate",
+    "tooltip": "Update interval in milliseconds (1000 milliseconds = 1 second)."
+  },
+
+  "tray-double-click": {
+    "type": "combobox",
+    "default": "task-manager",
+    "description": "Tray double click",
+    "options": {
+      "Start Task Manager (Default)": "task-manager",
+      "Memory Defragmenter": "defrag",
+      "Settings...": "settings",
+      "Do Nothing": "none"
+    },
+    "tooltip": "Action executed when double-clicking the tray icon."
+  },
+
+  "display-off-on-lock": {
+    "type": "checkbox",
+    "default": true,
+    "description": "Switch off computer's display when workstation is locked",
+    "tooltip": "Powers off the monitor via DPMS when the Cinnamon screensaver locks the session."
+  },
+
+  "show-tooltip": {
+    "type": "checkbox",
+    "default": false,
+    "description": "Show current memory information in Icon Tooltip",
+    "tooltip": "Shows detailed RAM, Page File, and Top Processes in the tray icon tooltip on hover."
+  },
+
+  "page-file-mode": {
+    "type": "combobox",
+    "default": "commit",
+    "description": "Page File calculation mode",
+    "options": {
+      "Commit Charge: Physical + Swap (Windows MemInfo style)": "commit",
+      "Swap Only (Linux Swap)": "swap"
+    },
+    "tooltip": "Choose whether Page File represents total Virtual Commit (RAM + Swap, matching Windows MemInfo) or Linux Swap only."
+  },
+
+  "task-manager-cmd": {
+    "type": "entry",
+    "default": "gnome-system-monitor",
+    "description": "Task Manager command",
+    "tooltip": "Command executed when clicking 'Start Task Manager'."
+  },
+
+  "show-top-processes": {
+    "type": "checkbox",
+    "default": true,
+    "description": "Show top memory usage processes",
+    "tooltip": "Displays the list of top memory-consuming processes in the tray popup menu."
+  },
+
+  "top-processes-count": {
+    "type": "spinbutton",
+    "default": 10,
+    "min": 1,
+    "max": 30,
+    "step": 1,
+    "units": "processes",
+    "dependency": "show-top-processes",
+    "description": "Show the top",
+    "tooltip": "Number of top memory-consuming processes to display in the menu."
+  },
+
+  "process-display-mode": {
+    "type": "combobox",
+    "default": "value",
+    "dependency": "show-top-processes",
+    "description": "Display current",
+    "options": {
+      "Memory value": "value",
+      "Percentage": "percent"
+    },
+    "tooltip": "Format process memory usage as MB/GB value or percentage of physical memory."
+  },
+
+  "highlight-processes": {
+    "type": "checkbox",
+    "default": true,
+    "dependency": "show-top-processes",
+    "description": "Highlight processes with memory value above threshold",
+    "tooltip": "Highlights processes whose memory usage exceeds the specified MB threshold."
+  },
+
+  "highlight-threshold-mb": {
+    "type": "spinbutton",
+    "default": 1000,
+    "min": 10,
+    "max": 65536,
+    "step": 50,
+    "units": "MB",
+    "dependency": "highlight-processes",
+    "description": "Highlight threshold",
+    "tooltip": "Processes using more than this amount of memory (in MB) are highlighted in the menu."
+  },
+
+  "show-process-name": {
+    "type": "checkbox",
+    "default": false,
+    "dependency": "show-top-processes",
+    "description": "Show process name instead of module name",
+    "tooltip": "Displays the friendly application name instead of the binary/module name."
+  },
+
+  "unify-processes": {
+    "type": "checkbox",
+    "default": true,
+    "dependency": "show-top-processes",
+    "description": "Unify the same processes",
+    "tooltip": "Groups multiple instances of the same process together and displays [count] with summed memory."
+  },
+
+  "show-dashboard": {
+    "type": "checkbox",
+    "default": true,
+    "description": "Show current memory information dashboard",
+    "tooltip": "Displays Memory Usage %, Physical Memory, and Page File statistics in the tray menu."
+  },
+
+  "show-tray-value-info": {
+    "type": "checkbox",
+    "default": true,
+    "dependency": "show-dashboard",
+    "description": "Show what is the value displayed in tray",
+    "tooltip": "Displays the header line (e.g. 'Displaying used physical memory') above the dashboard."
+  },
+
+  "use-internal-font": {
+    "type": "checkbox",
+    "default": true,
+    "description": "Use internal font for optimized results",
+    "tooltip": "Uses an optimized built-in compact font for the tray icon text."
+  },
+
+  "custom-font": {
+    "type": "fontchooser",
+    "default": "Sans Bold 9",
+    "description": "Font...",
+    "tooltip": "Custom font family and size used when internal font is unchecked."
+  },
+
+  "use-bar-color-for-font": {
+    "type": "checkbox",
+    "default": false,
+    "description": "Use bar color for font color",
+    "tooltip": "Colors the tray icon text using the active bar status color (Green, Yellow, or Red)."
+  },
+
+  "transparent-bg": {
+    "type": "checkbox",
+    "default": true,
+    "description": "Transparent background",
+    "tooltip": "Renders the tray icon with a transparent background instead of filling with 'Icon Tray - Background'."
+  },
+
+  "opaque-bar": {
+    "type": "checkbox",
+    "default": true,
+    "description": "Opaque bar",
+    "tooltip": "Renders the memory gauge bar at full opacity."
+  },
+
+  "standard-bar": {
+    "type": "checkbox",
+    "default": false,
+    "description": "Standard bar",
+    "tooltip": "Uses a flat standard progress bar instead of the bordered MemInfo meter style."
+  },
+
+  "bar-at-bottom": {
+    "type": "checkbox",
+    "default": false,
+    "description": "Bar at bottom",
+    "tooltip": "Places the memory gauge bar horizontally at the bottom of the tray icon instead of vertically on the left."
+  },
+
+  "show-percent-sign": {
+    "type": "checkbox",
+    "default": false,
+    "description": "Show % sign",
+    "tooltip": "Appends '%' when displaying percentage in the tray icon."
+  },
+
+  "theme-preset": {
+    "type": "combobox",
+    "default": "current",
+    "description": "Theme",
+    "options": {
+      "Current Colors": "current",
+      "MemInfo Dark (Default)": "meminfo-dark",
+      "MemInfo Light": "meminfo-light",
+      "High Contrast Green": "matrix-green",
+      "Ocean Blue": "ocean-blue"
+    },
+    "tooltip": "Select a color theme preset or customize individual Display Items below."
+  },
+
+  "menu-color-mode": {
+    "type": "combobox",
+    "default": "auto",
+    "description": "Menu - Color Mode",
+    "options": {
+      "Automatic": "auto",
+      "Dark": "dark",
+      "Light": "light"
+    },
+    "tooltip": "Color mode for the tray popup menu."
+  },
+
+  "color-menu-highlight": {
+    "type": "colorchooser",
+    "default": "#b43434",
+    "description": "Menu - Top Processes Highlight Color",
+    "tooltip": "Background highlight color for processes exceeding the highlight MB threshold."
+  },
+
+  "color-tray-text": {
+    "type": "colorchooser",
+    "default": "#ffffff",
+    "description": "Icon Tray - Text",
+    "tooltip": "Text color in the taskbar tray icon."
+  },
+
+  "color-tray-bg": {
+    "type": "colorchooser",
+    "default": "#1e1e1e",
+    "description": "Icon Tray - Background",
+    "tooltip": "Background color of the taskbar tray icon when 'Transparent background' is unchecked."
+  },
+
+  "color-bar-bg": {
+    "type": "colorchooser",
+    "default": "#2d2d2d",
+    "description": "Icon Bar - Background",
+    "tooltip": "Trough background color of the memory gauge bar."
+  },
+
+  "color-bar-green": {
+    "type": "colorchooser",
+    "default": "#4caf50",
+    "description": "Icon Bar - \"Normal / Green\"",
+    "tooltip": "Bar fill color when memory usage is normal (below Yellow threshold)."
+  },
+
+  "color-bar-yellow": {
+    "type": "colorchooser",
+    "default": "#d4a017",
+    "description": "Icon Bar - \"Yellow\"",
+    "tooltip": "Bar fill color when memory usage is in warning range (between Yellow and Red thresholds)."
+  },
+
+  "color-bar-red": {
+    "type": "colorchooser",
+    "default": "#e53935",
+    "description": "Icon Bar - \"Red\"",
+    "tooltip": "Bar fill color when memory usage is critical (at or above Red threshold)."
+  },
+
+  "custom-themes-json": {
+    "type": "generic",
+    "default": "{}"
+  }
+}

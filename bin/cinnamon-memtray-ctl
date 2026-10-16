@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# cinnamon-memtray-ctl — CLI control helper for MemTray Cinnamon Applet
+# ==============================================================================
+set -e
+
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/cinnamon-memtray"
+APPLET_DIR="$HOME/.local/share/cinnamon/applets/memtray@cinnamon.org"
+
+mkdir -p "$CACHE_DIR"
+
+usage() {
+    cat <<EOF
+Usage: cinnamon-memtray-ctl <command>
+
+Commands:
+  refresh     Trigger an immediate update of all MemTray applet instances
+  defrag      Trigger the Memory Defragmenter
+  settings    Open the 5-tab MemTray Settings window
+  about       Open the About MemTray dialog
+  status      Print current Physical Memory, Page File, and Top 10 Processes
+EOF
+}
+
+cmd="${1:-status}"
+
+case "$cmd" in
+    refresh)
+        date +%s%N > "$CACHE_DIR/refresh-all"
+        echo "Triggered MemTray refresh."
+        ;;
+    defrag)
+        date +%s%N > "$CACHE_DIR/defrag"
+        echo "Triggered MemTray Memory Defragmenter."
+        ;;
+    settings)
+        python3 "$APPLET_DIR/memtray-settings.py" "${@:2}" &
+        ;;
+    about)
+        python3 "$APPLET_DIR/memtray-about.py" &
+        ;;
+    status)
+        cjs -I "$APPLET_DIR" -c '
+            const Memory = imports.memory;
+            let s = Memory.readMemoryStats("commit");
+            print("=== MemTray Status ===");
+            print("Memory Usage:    " + s.ramPercent + "%");
+            print("Physical Memory: " + Memory.formatDashboardPair(s.ramUsed, s.ramTotal));
+            print("Page File:       " + Memory.formatDashboardPair(s.pageUsed, s.pageTotal));
+            print("\n=== Top 10 Memory Processes (Unified) ===");
+            let procs = Memory.getTopProcesses({ topCount: 10, unifyProcesses: true, totalRamBytes: s.ramTotal });
+            for (let p of procs) {
+                let mark = p.isHighlighted ? " [!]" : "";
+                print("  " + p.displayName.padEnd(28, " ") + " " + p.formattedMemory.padStart(10, " ") + mark);
+            }
+        '
+        ;;
+    *)
+        usage
+        exit 1
+        ;;
+esac

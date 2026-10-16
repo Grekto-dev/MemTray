@@ -1,0 +1,9 @@
+{
+  "uuid": "memtray@cinnamon.org",
+  "name": "MemTray",
+  "description": "Clean-room implementation of Windows MemInfo for the Cinnamon taskbar: live memory gauge tray icon, top memory processes menu with highlights, memory defragmenter, warnings, and customizable themes.",
+  "icon": "utilities-system-monitor",
+  "version": "1.0.0",
+  "cinnamon-version": ["5.4", "5.6", "5.8", "6.0", "6.2", "6.4", "6.6"],
+  "max-instances": -1
+}

@@ -1,0 +1,67 @@
+/* MemTray Cinnamon Applet Stylesheet (Clean-room MemInfo styling) */
+
+.memtray-applet {
+    padding: 0px 3px;
+}
+
+.memtray-canvas {
+    margin: 0px;
+    padding: 0px;
+}
+
+/* Popup Menu Dark Mode (MemInfo Windows 11 Dark Style) */
+.memtray-menu-dark {
+    background-color: #2b2b2b;
+    color: #f0f0f0;
+    border: 1px solid #454545;
+    border-radius: 6px;
+    padding: 4px 2px;
+}
+
+/* Popup Menu Light Mode */
+.memtray-menu-light {
+    background-color: #f5f5f5;
+    color: #1a1a1a;
+    border: 1px solid #c8c8c8;
+    border-radius: 6px;
+    padding: 4px 2px;
+}
+
+/* Base row inside MemTray menu */
+.memtray-menu-row {
+    padding: 3px 10px 3px 8px;
+    spacing: 8px;
+    min-width: 280px;
+}
+
+.memtray-menu-row-interactive:hover {
+    background-color: rgba(128, 128, 128, 0.22);
+    border-radius: 3px;
+}
+
+.memtray-icon-cell {
+    width: 16px;
+    height: 16px;
+}
+
+.memtray-row-label {
+    font-size: 9.5pt;
+    font-weight: normal;
+}
+
+.memtray-row-header {
+    font-size: 9pt;
+    opacity: 0.88;
+}
+
+.memtray-row-value {
+    font-size: 9.5pt;
+    font-weight: normal;
+    text-align: right;
+}
+
+.memtray-separator {
+    height: 1px;
+    margin: 3px 6px;
+    background-color: rgba(140, 140, 140, 0.32);
+}
