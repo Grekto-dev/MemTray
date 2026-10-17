@@ -1286,7 +1286,9 @@ class MemTrayApplet extends Applet.Applet {
             this._fileMonitorId = this._fileMonitor.connect('changed', (_monitor, file) => {
                 let name = file.get_basename();
                 if (name === `refresh-${this.instance_id}` || name === 'refresh-all') {
-                    this.update(true);
+                    // The settings window writes the config JSON before touching this
+                    // trigger; re-read it so changed colors/options apply without a reload.
+                    this._reloadSettingsFromFile();
                 } else if (name === 'defrag') {
                     this.runMemoryDefragmenter(true);
                 }
@@ -1294,6 +1296,17 @@ class MemTrayApplet extends Applet.Applet {
         } catch (e) {
             global.logWarning("[MemTray] File monitor setup failed: " + e.message);
         }
+    }
+
+    // Cinnamon's AppletSettings only fires bindProperty callbacks for keys that changed
+    // when _checkSettings() runs; remoteUpdate() is the public entry point for that.
+    _reloadSettingsFromFile() {
+        try {
+            this.settings.remoteUpdate(null, null);
+        } catch (e) {
+            global.logWarning("[MemTray] Settings reload failed: " + e.message);
+        }
+        this.update(true);
     }
 
     _cleanupFileMonitor() {
